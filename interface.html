@@ -1,0 +1,295 @@
+<!DOCTYPE HTML>
+ <html>
+   <head>    
+
+    <style>
+	body {
+		margin: 0px;
+		padding: 0px;
+        }
+	#leftSide{
+		/*float:left;
+		margin-left:100px;
+		margin-right:auto;
+		width:470px;*/
+	}
+	#rightSide{
+		display: none;
+		float: left;
+		margin-left:100px;
+		margin-right:auto;
+		width:470px;
+	}
+	h2{
+		text-align:center;
+	}
+        
+	#btnHolder{
+	text-align:center;
+	}
+
+	#potHolder{ 
+		width:100vw;
+		height:50vh;
+		position: absolute;
+	}
+
+	#potData{
+		
+		
+	}
+	.potMask1{
+		width:24.66666%;
+		height:100%;
+		background-color: blue;
+		position: relative;
+		display: inline-block;
+	
+
+	}
+	.potMask2{
+		width:24.66666%;
+		height:100%;
+		background-color: green;
+		position: relative;
+		display: inline-block;
+	
+
+	}
+	.potMask3{
+		width:24.66666%;
+		height:100%;
+		background-color: teal;
+		position: relative;
+		display: inline-block;
+	
+
+	}
+	.potMask4{
+		width:24.66666%;
+		height:100%;
+		background-color:brown;
+		position: relative;
+		display: inline-block;
+
+	}
+
+	.change {
+		-webkit-transition: .3s all ease;
+		-o-transition: .3s all ease;
+		transition: .3s all ease;
+		-webkit-transform: translateY(10vh);
+		-ms-transform: translateY(10vh);
+		-o-transform: translateY(10vh);
+		transform: translateY(10vh);
+		background-color: pink;
+	}
+
+    </style>
+
+	
+  </head>
+  <body>
+  	
+   <div id="leftSide">
+		<h2>Input <- Arduino</h2>
+		<div id="potHolder">
+		    <div id="potData"></div>
+		    <div class="potMask1"></div>
+		    <div class="potMask2"></div>
+		    <div class="potMask3"></div>
+		    <div class="potMask4"></div>
+		</div>
+   </div>
+       <div id="rightSide">
+	<h2>Output -> Arduino</h2>
+	<div id="btnHolder">
+	  <input type="button" id="check" value="Light 1"/>	</div>
+   </div> 
+   <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
+	<script src="http://code.jquery.com/ui/1.9.2/jquery-ui.js"></script>
+
+	<script src="http://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.23/p5.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.23/addons/p5.dom.min.js"></script> 
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.23/addons/p5.sound.js"></script> 
+	<script src="/socket.io/socket.io.js"></script>
+    <script>
+	
+	  
+	var iosocket;
+	
+	var potValue;
+	var prevPotValue;
+	//var onOff = false; 
+	var toggleVal = 0;
+	var ldr1, ldr2, ldr3, ldr4;
+
+ 	// sketch starts here
+	
+	var modulator, modFreq, modMinFreq = 0, modMaxFreq = 112;
+
+
+	// output envelope
+	var env1, env2, env3, env4, scaleArray1, scaleArray2, scaleArray3, note, countArray,ldrValue;
+	var osc, envelope, fft, scale, midiNotes;
+	var midiValue,freqValue,count;
+	var newOsc = "osc", newEnvelope = "env";
+	var ldrArray;
+
+
+	function initSocketIO(){
+		// var signal;
+		iosocket = io.connect();
+		iosocket.on('onconnection', function(value) {
+			initButton();
+		});
+		
+	}
+
+	
+	function setup() {
+		// create an array of 10 - 100
+		countArray = [10,20,30,40,50,60,70,80,90];
+		scale = [0, 4, 7, 9, 12];
+		scaleArray1 = 60;
+		scaleArray2 = [0, 2, 3, 4, 5, 7, 9, 10, 11];
+		scaleArray3 = [50, 52, 54, 55, 52];
+		// notes = [59,63,65,71];
+		notes = [59,63,68,75];
+
+		midiNotes = {};
+		var reverb = new p5.Reverb();
+
+		for(var i=0;i<notes.length;i++){
+			count = String(i);
+			midiNotes[newOsc + count] = new p5.TriOsc(); 
+			midiNotes[newEnvelope + count] = new p5.Env();
+			// // set attackTime, decayTime, sustainRatio, releaseTime
+			midiNotes[newEnvelope + count].setADSR(0.1, 0.1, 0.4, 1);
+			reverb.process(midiNotes[newOsc + i], 3, 0.5);
+			reverb.amp(2);
+			midiNotes[newEnvelope + count].setRange(1,0);
+			midiNotes[newOsc + count].start();
+
+			
+			
+		}
+
+	  // carrier1 = new p5.Oscillator('sine');
+	  // carrierFreq1 = new p5.Signal(60);
+	  // carrier1.freq(carrierFreq1);
+	  // carrier1.start();
+	  // // amplify envelope with carrier
+	  // // set attackTime, decayTime, sustainRatio, releaseTime
+	  // env1 = new p5.Env(0.001, 0.5, 1, 10);
+	  // carrier1.amp(env1);
+
+	  
+	}
+
+	function draw() {
+
+
+		
+	}
+
+
+	function initButton(){
+	   $( "#check" ).button(); // gives #check button features
+	}
+	
+	
+
+	window.onload = function(){
+		
+      
+  	$(document).ready(function() {
+  		initSocketIO();
+
+
+  		// recieve changed value other client from server
+		iosocket.on('lightReading', function (recievedData) {
+			var data = recievedData;
+
+			
+			// reverbTime of 6 seconds, decayRate of 0.2%
+			
+
+			ldrArray = [data.ldr1, data.ldr2, data.ldr3, data.ldr4];
+
+			for(var ldrCount = 0; ldrCount<=ldrArray.length;ldrCount++){
+				if(ldrArray[ldrCount] - 1 < 65
+				 && ldrArray[ldrCount] - 1 != undefined ){
+				console.log(ldrArray[ldrCount]);
+
+					// get ldrValue
+					ldrValue = ldrArray[ldrCount];
+					console.log("ldrValue = " + ldrValue);
+
+					// for every 10 or (i)ndex in the array
+					for(var i = 0; i<countArray.length-1;i++){
+						// console.log("i = " + i);
+						// test if data.ldr1 is between 2 indexes
+
+						if(ldrValue >= countArray[i] && ldrValue <= countArray[i+1]){
+							// set note to the note at that index in Array1
+							// try changing the type to 'square', 'sine' or 'triangle'
+							modulator = new p5.Oscillator('sine');
+							modulator.start();
+
+							// add the modulator's output to modulate the carrier's frequency
+							modulator.disconnect();
+
+							note = notes[ldrCount];
+
+							midiValue = note;
+							freqValue = midiToFreq(midiValue);
+ 		 					midiNotes[newOsc + ldrCount].freq(freqValue);
+
+						 // 	modFreq = map(freqValue, 100, 0, modMinFreq, modMaxFreq);
+		 				// 	modulator.freq(modFreq);
+		 				// 	midiNotes[newOsc + count].freq(modulator);
+							// console.log("note = " + note);
+							
+							// console.log("ldrvalue of " + i + " = " + ldrValue);
+							// console.log("play note " + note + " on index " + i);
+					
+						}
+						
+					}
+					
+
+				 	midiNotes[newEnvelope + ldrCount].play(midiNotes[newOsc + ldrCount], 0, 0.1);
+				 	// $(".potMask" + String(ldrCount+1)).css("top", -(ldrArray[ldrCount]));
+				 	// $(".potMask" + String(ldrCount+1)).addClass('change');
+
+				} else {
+					// $(".potMask" + String(ldrCount+1)).delay(400).removeClass('change');
+				}
+
+
+
+				
+			}
+
+			iosocket.emit('lightData',data);
+
+			
+		});
+
+        $('#check').click(function() {
+            toggleVal += 1;
+		    toggleVal %= 2;
+		    // the code above checks to see if the number is 1 or 2 and divides by 2 and checks the remainder and will be a 1 or 0
+		    iosocket.emit('buttonval',toggleVal); // this will send a the value to a function on the server that is listening. 
+	 	});
+
+	});
+
+}
+
+
+
+    </script>
+  </body>
+</html>
